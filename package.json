@@ -1,21 +1,14 @@
 {
-  "name": "kakao-chat-to-excel",
+  "name": "kakao-to-excel",
   "version": "1.0.0",
-  "description": "",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "body-parser": "^2.2.1",
-    "express": "^5.2.1",
-    "google-auth-library": "^10.5.0",
-    "google-spreadsheet": "^5.0.2",
-    "ngrok": "^5.0.0-beta.2",
+    "express": "^4.18.2",
+    "body-parser": "^1.20.2",
     "xlsx": "^0.18.5"
   }
 }
