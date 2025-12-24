@@ -17,12 +17,14 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.json());
 
-// --- 데이터 추출 함수 (정규표현식 보강) ---
+// --- 데이터 추출 함수 ---
 const parseMessage = (message) => {
-  const school = message.match(/-학교:\s*([^\n*]+)/)?.[1]?.trim() || "";
-  const name = message.match(/-학생 이름:\s*([^\n*]+)/)?.[1]?.trim() || "";
-  const address = message.match(/-주소 및 탑승 장소:\s*([^\n*]+)/)?.[1]?.trim() || "";
-  const phone = message.match(/-연락처:\s*([^\n*]+)/)?.[1]?.trim() || "";
+  // 키워드가 정확하지 않아도 찾을 수 있도록 정규표현식 보강
+  const school = message.match(/(?:학교|학교명)[:\s]*([^\n*-]+)/)?.[1]?.trim() || "";
+  const name = message.match(/(?:이름|학생|학생\s*이름)[:\s]*([^\n*-]+)/)?.[1]?.trim() || "";
+  const address = message.match(/(?:주소|장소|탑승|탑승\s*장소)[:\s]*([^\n*-]+)/)?.[1]?.trim() || "";
+  const phone = message.match(/(?:연락처|전화|폰)[:\s]*([\d-]{10,14})/)?.[1]?.trim() || 
+                message.match(/([\d-]{10,14})/)?.[1]?.trim() || "";
 
   return { school, name, address, phone };
 };
@@ -31,7 +33,6 @@ const saveToExcel = (userId, message) => {
   const time = new Date().toLocaleString("ko-KR");
   const parsedData = parseMessage(message);
 
-  // 엑셀 시트의 헤더(열 이름)와 매칭될 데이터 구조
   const newRow = {
     "시간": time,
     "사용자ID": userId,
@@ -39,7 +40,7 @@ const saveToExcel = (userId, message) => {
     "학생이름": parsedData.name,
     "탑승장소": parsedData.address,
     "연락처": parsedData.phone,
-    "비고(원본메세지)": message  // 요청하신 대로 원본 메시지를 비고란에 삽입
+    "비고(원본메세지)": message
   };
 
   let workbook;
@@ -60,15 +61,8 @@ const saveToExcel = (userId, message) => {
   data.push(newRow);
   const newWorksheet = XLSX.utils.json_to_sheet(data);
   
-  // 열 너비 자동 설정 (내용이 길어도 잘 보이게)
   newWorksheet["!cols"] = [
-    { wch: 22 }, // 시간
-    { wch: 15 }, // 사용자ID
-    { wch: 12 }, // 학교
-    { wch: 12 }, // 학생이름
-    { wch: 35 }, // 탑승장소
-    { wch: 15 }, // 연락처
-    { wch: 60 }  // 비고(원본메세지) - 길게 설정
+    { wch: 22 }, { wch: 15 }, { wch: 12 }, { wch: 12 }, { wch: 35 }, { wch: 15 }, { wch: 60 }
   ];
 
   if (workbook.SheetNames.includes("채팅로그")) {
@@ -81,7 +75,6 @@ const saveToExcel = (userId, message) => {
   console.log(`📊 엑셀 저장 완료: ${parsedData.name} (${parsedData.school})`);
 };
 
-// 엑셀 다운로드 경로
 app.get("/download", (req, res) => {
   const filePath = path.resolve(FILE_NAME);
   if (fs.existsSync(filePath)) {
@@ -91,6 +84,7 @@ app.get("/download", (req, res) => {
   }
 });
 
+// --- 핵심 수정 부분: 응답 메시지 제거 ---
 app.post("/kakao-webhook", (req, res) => {
   const userId = req.body.userRequest?.user?.id || "비회원";
   const message = req.body.userRequest?.utterance || "";
@@ -103,10 +97,11 @@ app.post("/kakao-webhook", (req, res) => {
     }
   }
 
+  // outputs를 비워두면 봇이 대답을 하지 않습니다.
   res.status(200).send({
     version: "2.0",
     template: {
-      outputs: [{ simpleText: { text: "✅ 신청 정보가 표에 기록되었습니다." } }]
+      outputs: [] 
     }
   });
 });
